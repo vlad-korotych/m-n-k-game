@@ -1,9 +1,10 @@
+import numpy as np
 from Game import Game
 from ConsoleView import ConsoleView
 from ConsoleHumanAgent import ConsoleHumanAgent
 from QLearningApproximationAgent import QLearningApproximationAgent
 from EpsilonGreedyChooser import EpsilonGreedyChooser
-import numpy as np
+import cProfile
 
 if __name__ == "__main__":
     #g = Game(player1=ConsoleHumanAgent(), player2=ConsoleHumanAgent(), view=ConsoleView())
@@ -12,4 +13,5 @@ if __name__ == "__main__":
     weights = np.zeros(num_feat)
     agent1 = QLearningApproximationAgent(0.5, 0.5, EpsilonGreedyChooser(0.05), weights=weights)
     agent2 = QLearningApproximationAgent(0.5, 0.5, EpsilonGreedyChooser(0.05), weights=weights)    
-    g = Game(player1=agent1, player2=agent2, view=ConsoleView())
+    g = Game(player1=agent1, player2=agent2, view=ConsoleView(), play=False)
+    g.start()

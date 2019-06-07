@@ -1,7 +1,7 @@
 from base import Agent, Chooser, Mark
 import numpy as np
 from typing import List, Optional
-import copy
+#import copy
 import random
 
 class QLearningApproximationAgent(Agent):
@@ -46,9 +46,12 @@ class QLearningApproximationAgent(Agent):
     def get_actions_features(self, state, possible_actions):
         features = []
         for action in possible_actions:
-            new_state = copy.deepcopy(state)
-            new_state.board[action[0], action[1]] = new_state.current_player.value
-            features.append((action, self.get_features(new_state)))
+            #new_state = copy.deepcopy(state)
+            #new_state.board[action[0], action[1]] = new_state.current_player.value
+            state.board[action[0], action[1]] = state.current_player.value
+            features.append((action, self.get_features(state)))
+            # revert action
+            state.board[action[0], action[1]] = Mark.NO.value
         return features
         
     
@@ -74,6 +77,9 @@ class QLearningApproximationAgent(Agent):
         return possible_actions
     
     def get_features(self, state):
+
+        no_value = Mark.NO.value
+
         directions = [(0, 1), (1, 1), (1, 0), (1, -1)]
         b = state.board
         h, w = b.shape
@@ -91,7 +97,7 @@ class QLearningApproximationAgent(Agent):
         for r in range(h):
             for c in range(w):
                 #print(f'r, c, val: {r}, {c}, {b[r, c]}')
-                if b[r, c] == Mark.NO.value: # empty cell, next
+                if b[r, c] == no_value: # empty cell, next
                     continue
                 for d_i, (d_r, d_c) in enumerate(directions):
                     #print(f'direction: {(d_r, d_c, d_i)}')
@@ -127,7 +133,7 @@ class QLearningApproximationAgent(Agent):
                             cnt += 1
                             v[nr, nc, d_i] = 1
                             steal = True
-                        elif nm != Mark.NO.value: # another mark
+                        elif nm != no_value: # another mark
                             if steal:
                                 enemy_behind = True
                             break
@@ -153,7 +159,7 @@ class QLearningApproximationAgent(Agent):
                         if nm == m: # same mark, it can't be
                             cnt += 1
                             v[nr, nc, d_i] = 1
-                        elif nm != Mark.NO.value: # another mark
+                        elif nm != no_value: # another mark
                             if i == 0:
                                 enemy_behind = True
                             break
