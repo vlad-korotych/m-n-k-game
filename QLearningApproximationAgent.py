@@ -1,6 +1,6 @@
 from base import Agent, Policy, Mark, Action, GameState
 import numpy as np
-from typing import List, Optional, Dict, NamedTuple, Union
+from typing import List, Optional, Dict, NamedTuple, Union, Tuple
 import logging
 import random
 from dataclasses import dataclass
@@ -26,8 +26,6 @@ class QLearningApproximationAgent(Agent):
         self.row: int = row
         self.history_actions: List[ActionInfo] = []
         self.history_theta: List[np.ndarray] = []
-#        self.prev_state: Optional[GameState] = None
-#        self.prev_action: Optional[Action] = None
         self.inf_field: bool = inf_field
         
         self.feature_names: List[Union[Feature, str]] = []
@@ -52,18 +50,33 @@ class QLearningApproximationAgent(Agent):
     def get_action(self, new_state: GameState) -> Action:
         logging.info(f'{self.__class__.__name__}.get_action()')
         actions = self.get_possible_actions(new_state)
-
+        logging.info(f'Player: {new_state.current_player.name}')
         logging.info(f'\nPossible actions: {len(actions)}')
 
         actions = self.get_actions_features(new_state, actions)
 
         actions = self.Q_values(actions)
+
+        Q_table = new_state.board.copy()
+        Q_table[Q_table == Mark.X.value] = Mark.X.name
+        Q_table[Q_table == Mark.O.value] = Mark.O.name
+        for a in actions:
+            info = f'\nAction: {a.action}\n'
+            info += f'Board:\n{a.new_board}\n'
+            info += f'Features: {a.new_features}\n'
+            info += f'Q value: {a.new_Q_value}'
+            Q_table[a.action.row, a.action.col] = a.new_Q_value
+            logging.info(info)
         
+        logging.info(f'Q table:\n{Q_table}')
+
         if len(self.history_actions) > 0 is not None and self.is_learning:
             reward = -1
             self.learn(self.history_actions[-1], actions, reward)
         
         action = self.policy.get_action(new_state, actions)
+
+        logging.info(f'Action: {action.action}')
         
         self.history_actions.append(action)
 
@@ -75,21 +88,6 @@ class QLearningApproximationAgent(Agent):
             a.new_board[a.action.row, a.action.col] = state.current_player.value
             a.new_features = self.get_features(a.new_board, state.current_player)
         return actions
-    
-    def get_reward(self, prev_state, prev_action):
-        if self.inf_field:
-            # if board is infinite, real board will grow to infinity too
-            # so, we need, that the agent move marks to center
-            h, w = prev_state.board.shape
-            v = np.where(prev_state.board != 0)
-            center = np.array([np.mean(v[0]), np.mean(v[1])])
-            d = np.linalg.norm(np.array([prev_action[0], prev_action[1]]) - center)
-            if d < 10:
-                return -1
-            else:
-                return np.floor(10 - d)
-        else:
-            return -1
     
     def get_possible_actions(self, state: GameState) -> List[ActionInfo]:
         f = np.where(state.board == Mark.NO.value)
@@ -197,9 +195,21 @@ class QLearningApproximationAgent(Agent):
                             #rows.append((row, (2, cnt, enemy_behind)))
                             features[Feature(2, cnt, enemy_behind)] += 1
             if sum([abs(f) for f in features.values()]) == 0:
-                features['alone'] = 1
+                features['alone'] = self.check_alone(o)
         #print(rows)
         return np.array(list(features.values()))
+    
+    def check_alone(self, o: List[Tuple[int, int]]):
+        for p1 in o:
+            np1 = np.array(p1)
+            for p2 in o:
+                if p1 == p2:
+                    continue
+                np2 = np.array(p2)
+                if np.linalg.norm(np1 - np2) < 2:
+                    return 0
+        return 1
+
     
     def Q_values(self, actions: List[ActionInfo]) -> List[ActionInfo]:
         for a in actions:
@@ -211,20 +221,25 @@ class QLearningApproximationAgent(Agent):
 #        return q_value
     
     def learn(self, prev_action: ActionInfo, actions: Optional[List[ActionInfo]], reward: float):
-
+        logging.info(f'{self.__class__.__name__}.learn()')
         future_reward: float = 0
 
         if actions is not None:
+            logging.info('TD')
             max_Q_value = np.max([a.new_Q_value for a in actions])
             action = random.choice([a for a in actions if a.new_Q_value == max_Q_value])
 
             self.history_theta.append(self.theta.copy())
             assert action.new_Q_value is not None
             future_reward = self.gamma * action.new_Q_value
+        else:
+            logging.info('Terminal state')
 
         assert prev_action.new_Q_value is not None
         assert prev_action.new_features is not None
+        logging.info(f'Old theta: {self.theta}')
         self.theta += self.alfa * (reward + future_reward - prev_action.new_Q_value) * prev_action.new_features
+        logging.info(f'New theta: {self.theta}')
             
     def loss(self, state):
         if self.is_learning:
