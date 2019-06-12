@@ -1,9 +1,10 @@
-from base import Mark, View, GameState
+from base import Mark, View, GameState, Action
 import math
+from typing import Callable, Optional
 
 class ConsoleView(View):
     def __init__(self) -> None:
-        self.turn_callback = None
+        self.turn_callback: Optional[Callable[[Action], None]] = None
 
     def update(self, state: GameState) -> None:
         self.print_board(state)

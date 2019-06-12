@@ -1,11 +1,11 @@
-from base import Agent, GameState, Mark
+from base import Agent, GameState, Mark, Action
 from typing import Tuple
 
 class ConsoleHumanAgent(Agent):
     def __init__(self):
         pass
     
-    def get_action(self, state: GameState) -> Tuple[int, int]:
+    def get_action(self, state: GameState) -> Action:
         h, w = state.board.shape
         while True:
             try:
@@ -24,7 +24,7 @@ class ConsoleHumanAgent(Agent):
                 print(f'\nRow {r}, column {c} is occupied, try again')
                 continue
             break
-        return r, c
+        return Action(r, c)
 
     def win(self, state: GameState):
         pass

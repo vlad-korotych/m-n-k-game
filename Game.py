@@ -1,6 +1,7 @@
-from base import Agent, View, Mark, Player, GameState
+from base import Agent, View, Mark, Player, GameState, Action
 from typing import Optional
 import numpy as np
+import logging
 
 class Game:
     def __init__(self,
@@ -10,15 +11,14 @@ class Game:
                  n: Optional[int] = None,
                  k: int = 5,
                  view: Optional[View]=None,
-                 play: bool = True) -> None:
-        self.width = m
-        self.height = n
-        self.row = k # win row
+                 play: bool = True
+                 ):
+        self.width: Optional[int] = m
+        self.height: Optional[int] = n
+        self.row: int = k # win row
        
         width = m
         height = n
-        #self.moves = []
-        self.turn_no = 0
         
         auto_first_turn = False
         if self.width is None and self.height is None:
@@ -48,20 +48,24 @@ class Game:
         self.view = view
         if self.view is not None:
             self.view.turn_callback = self.apply_action
-            
+
+        info = '\nGame.__init__'
+        info += f'\nwidth: {self.width}'
+        info += f'\nheight: {self.height}'
+        info += f'\nrow: {self.row}'
+        info += f'\nplayer1({self.player1.mark.name}): {self.player1.agent.__class__.__name__}'
+        info += f'\nplayer2({self.player2.mark.name}): {self.player2.agent.__class__.__name__}'
+        #debug += f'\nboard:\n{str(self.board)}'
+        logging.info(info)
+        
         if play:
             self.start()
             
-    def apply_action(self, row, column):
+    def apply_action(self, action: Action) -> None:
+        row, column = action
         if self.board[row][column] != Mark.NO.value:
             raise RuntimeError('Cell already used')
         self.board[row][column] = self.current_player.mark.value
-        #if (row, column) in self.moves:
-            #print('Double!')
-        #self.moves.append((row, column))
-        
-        #print(f'Turn {self.turn_no}, {self.current_player.mark.name} row: {row}, col: {column}')
-        self.turn_no += 1
         
         # check for win
         self.winner = self.check_win()
@@ -108,19 +112,20 @@ class Game:
         if action is None:
             return # wait callback from UI
         else:
-            row, column = action
-            self.apply_action(row, column)
+            #row, column = action
+            self.apply_action(action)
 
-    def start(self):
+    def start(self) -> None:
         self.winner = Mark.NO
         self.end_game = False
 
         self.state = self.new_state()
+        logging.debug(f'\nInitial state:\n{self.state}')
         self.update_view()
         
         self.get_action()
         
-    def new_state(self):
+    def new_state(self) -> GameState:
         state = GameState(self.board.copy(), self.current_player.mark, self.end_game, self.winner)
         return state
 

@@ -1,60 +1,80 @@
-from base import Agent, Chooser, Mark
+from base import Agent, Policy, Mark, Action, GameState
 import numpy as np
-from typing import List, Optional
-#import copy
+from typing import List, Optional, Dict, NamedTuple, Union
+import logging
 import random
+from dataclasses import dataclass
+
+class Feature(NamedTuple):
+    mark: int # my_mark=Mark.X.value, enemy_mark=Mark.O.value
+    row: int
+    enemy_behind: bool
+
+@dataclass
+class ActionInfo:
+    action: Action
+    new_board: Optional[np.ndarray] = None
+    new_features: Optional[np.ndarray] = None
+    new_Q_value: Optional[float] = None
 
 class QLearningApproximationAgent(Agent):
-    def __init__(self, alfa: float, gamma: float, chooser: Chooser, row: int = 5, learning: bool = True, weights: Optional[List[float]]=None, inf_field: bool = True):
-        self.alfa = alfa
-        self.gamma = gamma
-        self.chooser = chooser
-        self.is_learning = learning
-        self.row = row
-        self.prev_state = None
-        self.prev_action = None
-        self.inf_field = inf_field
+    def __init__(self, alfa: float, gamma: float, policy: Policy, row: int = 5, learning: bool = True, theta: Optional[np.ndarray]=None, inf_field: bool = True):
+        self.alfa: float = alfa
+        self.gamma: float = gamma
+        self.policy: Policy = policy
+        self.is_learning: bool = learning
+        self.row: int = row
+        self.history_actions: List[ActionInfo] = []
+        self.history_theta: List[np.ndarray] = []
+#        self.prev_state: Optional[GameState] = None
+#        self.prev_action: Optional[Action] = None
+        self.inf_field: bool = inf_field
         
-        
-        self.features_count = ((((row - 2) * 2) + 1) * 2) - 1
+        self.feature_names: List[Union[Feature, str]] = []
+        for m in [Mark.X.value, Mark.O.value]:
+            for b in [False, True]:
+                for i in range(2, self.row + 1):
+                    if i == self.row and b == True:
+                        continue
+                    self.feature_names.append(Feature(m, i, b))
+        self.feature_names.append('alone')
         # for example, current player is X, and features will be count of each:
         # XXXXX, XXXX , OXXXX , XXX  , OXXX  , XX   , OXX   ,
         # OOOO , XOOOO , OOO  , XOOO  , OO   , XOO   .
 
-        if weights is not None:
-            self.weights = weights
+
+        if theta is not None:
+            self.theta = theta
         else:
-            self.weights = np.zeros(self.features_count)
+            self.theta = np.zeros(len(self.feature_names))
+
     
-    def get_action(self, state):
-        possible_actions = self.get_possible_actions(state)
-        features = self.get_actions_features(state, possible_actions)
+    def get_action(self, new_state: GameState) -> Action:
+        logging.info(f'{self.__class__.__name__}.get_action()')
+        actions = self.get_possible_actions(new_state)
+
+        logging.info(f'\nPossible actions: {len(actions)}')
+
+        actions = self.get_actions_features(new_state, actions)
+
+        actions = self.Q_values(actions)
         
-        if self.prev_state is not None and self.is_learning:
-            reward = self.get_reward(self.prev_state, self.prev_action)
-            self.td_learn(self.prev_state, self.prev_action, features, reward)
+        if len(self.history_actions) > 0 is not None and self.is_learning:
+            reward = -1
+            self.learn(self.history_actions[-1], actions, reward)
         
-        weighted_actions = self.weigh_actions(features)
-            
-        action = self.chooser.choose_action(state, weighted_actions)
+        action = self.policy.get_action(new_state, actions)
         
-        self.prev_state = state
-        self.prev_action = action[0]
-        
-        return action[0]
+        self.history_actions.append(action)
+
+        return action.action
     
-    def get_actions_features(self, state, possible_actions):
-        features = []
-        for action in possible_actions:
-            #new_state = copy.deepcopy(state)
-            #new_state.board[action[0], action[1]] = new_state.current_player.value
-            state.board[action[0], action[1]] = state.current_player.value
-            features.append((action, self.get_features(state)))
-            # revert action
-            state.board[action[0], action[1]] = Mark.NO.value
-        return features
-        
-    
+    def get_actions_features(self, state: GameState, actions: List[ActionInfo]) -> List[ActionInfo]:
+        for a in actions:
+            a.new_board = state.board.copy()
+            a.new_board[a.action.row, a.action.col] = state.current_player.value
+            a.new_features = self.get_features(a.new_board, state.current_player)
+        return actions
     
     def get_reward(self, prev_state, prev_action):
         if self.inf_field:
@@ -71,40 +91,37 @@ class QLearningApproximationAgent(Agent):
         else:
             return -1
     
-    def get_possible_actions(self, state):
+    def get_possible_actions(self, state: GameState) -> List[ActionInfo]:
         f = np.where(state.board == Mark.NO.value)
-        possible_actions = list(zip(f[0], f[1]))
+        possible_actions = [ActionInfo(action=Action(r, c)) for r, c in zip(f[0], f[1])]
         return possible_actions
     
-    def get_features(self, state):
+    def get_features(self, board: np.ndarray, current_player: Mark) -> List[int]:
 
         no_value = Mark.NO.value
+        curr_value = current_player.value
 
         directions = [(0, 1), (1, 1), (1, 0), (1, -1)]
-        b = state.board
-        h, w = b.shape
-        #print(f'h, w: {h}, {w}')
-        features = {}
-        for i in range(2, self.row):
-            features[(1, i, True)] = 0
-            features[(2, i, True)] = 0
-            features[(1, i, False)] = 0
-            features[(2, i, False)] = 0
-        features[(1, self.row, False)] = 0
-        #rows = []
+        h, w = board.shape
+
+        features = dict((k, 0) for k in self.feature_names)
+
         v = np.zeros((h, w, len(directions)))
-        
-        for r in range(h):
-            for c in range(w):
+
+        occupied = np.where(board != Mark.NO.value)
+        o = [(r, c) for r, c in zip(occupied[0], occupied[1])]
+
+        if len(o) == 1:
+            features['alone'] = 1
+        else:
+            for r, c in o:
                 #print(f'r, c, val: {r}, {c}, {b[r, c]}')
-                if b[r, c] == no_value: # empty cell, next
-                    continue
                 for d_i, (d_r, d_c) in enumerate(directions):
                     #print(f'direction: {(d_r, d_c, d_i)}')
                     if v[r, c, d_i] == 1: # we already count this cell in this direction
                         #print('already count')
                         continue
-                    m = b[r, c] # memorize mark
+                    m = board[r, c] # memorize mark
                     #row = []
                     #row.append((r, c))
                     s = 1
@@ -126,7 +143,7 @@ class QLearningApproximationAgent(Agent):
                         #if v[nr, nc, d_i] == 1: # perhaps, it is impossible
                         #    break
                         
-                        nm = b[nr, nc]
+                        nm = board[nr, nc]
                         #print(f'cell: {(nr, nc)}, {nm}')
                         #row.append((nr, nc))
                         if nm == m: # same mark
@@ -154,7 +171,7 @@ class QLearningApproximationAgent(Agent):
                                 enemy_behind = True
                             break
                             
-                        nm = b[nr, nc]
+                        nm = board[nr, nc]
                         #row.append((nr, nc))
                         if nm == m: # same mark, it can't be
                             cnt += 1
@@ -173,60 +190,50 @@ class QLearningApproximationAgent(Agent):
                     if cnt > 1:
                         if cnt == self.row:
                             enemy_behind = False
-                        if m == state.current_player.value:
+                        if m == curr_value:
                             #rows.append((row, (1, cnt, enemy_behind)))
-                            features[(1, cnt, enemy_behind)] += 1
+                            features[Feature(1, cnt, enemy_behind)] += 1
                         else:
                             #rows.append((row, (2, cnt, enemy_behind)))
-                            features[(2, cnt, enemy_behind)] += 1
+                            features[Feature(2, cnt, enemy_behind)] += 1
+            if sum([abs(f) for f in features.values()]) == 0:
+                features['alone'] = 1
         #print(rows)
-        return list(features.values())
+        return np.array(list(features.values()))
     
-    def weigh_actions(self, features):
-        weighted_actions = []
-        for action, feat in features:
-            weighted_actions.append((action, self.get_Q_value(feat)))
+    def Q_values(self, actions: List[ActionInfo]) -> List[ActionInfo]:
+        for a in actions:
+            a.new_Q_value = np.dot(self.theta, a.new_features)
+        return actions
+    
+#    def get_Q_value(self, features):
+#        q_value = np.dot(self.weights, features)
+#        return q_value
+    
+    def learn(self, prev_action: ActionInfo, actions: Optional[List[ActionInfo]], reward: float):
+
+        future_reward: float = 0
+
+        if actions is not None:
+            max_Q_value = np.max([a.new_Q_value for a in actions])
+            action = random.choice([a for a in actions if a.new_Q_value == max_Q_value])
+
+            self.history_theta.append(self.theta.copy())
+            assert action.new_Q_value is not None
+            future_reward = self.gamma * action.new_Q_value
+
+        assert prev_action.new_Q_value is not None
+        assert prev_action.new_features is not None
+        self.theta += self.alfa * (reward + future_reward - prev_action.new_Q_value) * prev_action.new_features
             
-        return weighted_actions
-    
-    def get_Q_value(self, features):
-        q_value = np.dot(self.weights, features)
-        return q_value
-    
-    def td_learn(self, prev_state, prev_action, features, reward):
-        weighted_actions = self.weigh_actions(features)
-        
-        max_weight = np.max([weight for action, weight in weighted_actions])
-        action = random.choice([(action, weight) for action, weight in weighted_actions if weight == max_weight])
-        q_value = action[1]
-        expected = reward + self.gamma * q_value
-        
-        prev_state.board[prev_action[0], prev_action[1]] = prev_state.current_player.value
-        prev_feat = self.get_features(prev_state)
-        current = self.get_Q_value(prev_feat)
-        
-        td = expected - current
-        
-        for i in range(self.features_count):
-            self.weights[i] += self.alfa * td * prev_feat[i]
-            
-    def mc_learn(self, prev_state, prev_action, reward):
-        prev_state.board[prev_action[0], prev_action[1]] = prev_state.current_player.value
-        prev_feat = self.get_features(prev_state)
-    
-        q_value = self.get_Q_value(prev_feat)
-        for i in range(self.features_count):
-            self.weights[i] += self.alfa * (reward - q_value) * prev_feat[i]
-        
-    
     def loss(self, state):
         if self.is_learning:
-            self.mc_learn(self.prev_state, self.prev_action, -100)
+            self.learn(self.history_actions[-1], None, -100)
         
     
     def win(self, state):
         if self.is_learning:
-            self.mc_learn(self.prev_state, self.prev_action, 100)
+            self.learn(self.history_actions[-1], None, 100)
         
     
     def draw(self, state):

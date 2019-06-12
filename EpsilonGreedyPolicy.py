@@ -1,9 +1,10 @@
-from base import Chooser, GameState
+from base import Policy, GameState, Action
 import random
 import numpy as np
 from typing import List, Tuple, Any
+from QLearningApproximationAgent import ActionInfo
 
-class EpsilonGreedyChooser(Chooser):
+class EpsilonGreedyPolicy(Policy):
     def __init__(self, epsilon: float, seed: int = None):
         self.seed = seed
         if self.seed is not None:
@@ -12,7 +13,7 @@ class EpsilonGreedyChooser(Chooser):
         
         self.epsilon = epsilon
     
-    def choose_action(self, state: GameState, actions: List[Tuple[Any, float]]) -> Any:
+    def get_action(self, state: GameState, actions: List[ActionInfo]) -> ActionInfo:
         """
         actions is list of (action, weight),
         """
@@ -28,7 +29,7 @@ class EpsilonGreedyChooser(Chooser):
                 self.random_state = random.getstate()
         else:
             # exploitation
-            max_weight = np.max([weight for action, weight in actions])
-            action = random.choice([(action, weight) for action, weight in actions if weight == max_weight])
-        
+            max_Q_value = np.max([a.new_Q_value for a in actions])
+            action = random.choice([a for a in actions if a.new_Q_value == max_Q_value])
+       
         return action
