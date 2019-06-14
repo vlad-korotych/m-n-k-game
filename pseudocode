@@ -1,0 +1,63 @@
+# lazy programmer approach
+
+#init
+state = game.get_initial_state()
+theta = model.get_initial_theta()
+prev_q_value = None
+game_end = False
+
+#main loop
+while not game_end:
+    all_actions[] = game.get_possible_actions()
+    features_for_all_actions[] = model.get_features(state, all_actions[])
+    q_values_for_all_actions[] = model.get_q_values(theta, features_for_all_actions[])
+    
+    #learning
+    new_theta = theta
+    if prev_state is not None:
+        new_theta = learn(q_values_for_all_actions[], prev_q_value, reward)
+
+    action_ex = policy.get_action(state, all_actions[], features_for_all_actions[], q_values_for_all_actions[])
+
+    # store
+    prev_q_value = action_ex.q_value
+    theta = new_theta
+
+    # get new state
+    game_end, state = game.act(action_ex.action)
+
+# terminal state
+learn(q_values_for_all_actions[] = None, prev_q_value, reward)
+
+
+# alternative approach
+
+#init
+state = game.get_initial_state()
+theta = model.get_initial_theta()
+prev_q_value = None
+game_end = False
+
+#main loop
+while not game_end:
+    all_actions[] = game.get_possible_actions()
+    features_for_all_actions[] = model.get_features(state, all_actions[])
+    
+    #learning
+    new_theta = theta
+    if prev_state is not None:
+        q_values_for_all_actions[] = model.get_q_values(theta, features_for_all_actions[])
+        new_theta = learn(q_values_for_all_actions[], prev_q_value, reward)
+
+    q_values_for_all_actions[] = model.get_q_values(new_theta, features_for_all_actions[])
+    action_ex = policy.get_action(state, all_actions[], features_for_all_actions[], q_values_for_all_actions[])
+
+    # store
+    prev_q_value = action_ex.q_value
+
+    # get new state
+    game_end, state = game.act(action_ex.action)
+
+# terminal state
+learn(q_values_for_all_actions[] = None, prev_q_value, reward)
+
