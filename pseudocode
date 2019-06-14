@@ -15,7 +15,7 @@ while not game_end:
     #learning
     new_theta = theta
     if prev_state is not None:
-        new_theta = learn(q_values_for_all_actions[], prev_q_value, reward)
+        new_theta = learn(theta, q_values_for_all_actions[], prev_q_value, reward)
 
     action_ex = policy.get_action(state, all_actions[], features_for_all_actions[], q_values_for_all_actions[])
 
@@ -47,7 +47,7 @@ while not game_end:
     new_theta = theta
     if prev_state is not None:
         q_values_for_all_actions[] = model.get_q_values(theta, features_for_all_actions[])
-        new_theta = learn(q_values_for_all_actions[], prev_q_value, reward)
+        new_theta = learn(theta, q_values_for_all_actions[], prev_q_value, reward)
 
     q_values_for_all_actions[] = model.get_q_values(new_theta, features_for_all_actions[])
     action_ex = policy.get_action(state, all_actions[], features_for_all_actions[], q_values_for_all_actions[])
