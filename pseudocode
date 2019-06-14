@@ -54,6 +54,7 @@ while not game_end:
 
     # store
     prev_q_value = action_ex.q_value
+    theta = new_theta
 
     # get new state
     game_end, state = game.act(action_ex.action)
