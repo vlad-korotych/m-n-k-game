@@ -33,8 +33,9 @@ class EpsilonGreedyPolicy(Policy):
             # exploitation
             info = 'exploitation\n'
             max_Q_value = np.max([a.new_Q_value for a in actions])
-            info += f'max_Q_value: {max_Q_value}\n'
+            max_actions = [a for a in actions if a.new_Q_value == max_Q_value]
+            info += f'max_Q_value: {max_Q_value}, total values: {len(actions)}, with max Q_value: {len(max_actions)}\n'
             logging.info(info)
-            action = random.choice([a for a in actions if a.new_Q_value == max_Q_value])
+            action = random.choice(max_actions)
 
         return action

@@ -72,4 +72,19 @@ class Policy(ABC):
     def get_action(self, state: GameState, actions: Any):
         pass
 
+class FeaturesModel(ABC):
+    @abstractmethod
+    def __init__(self):
+        pass
+    
+    @abstractmethod
+    def get_features(self, state: GameState) -> List[int]:
+        pass
 
+    @abstractmethod
+    def features_count(self) -> int:
+        pass
+
+    @abstractmethod
+    def feature_names(self) -> List[Any]:
+        pass
