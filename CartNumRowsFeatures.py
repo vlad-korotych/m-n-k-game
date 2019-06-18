@@ -2,6 +2,7 @@ from NumRowsFeatures import NumRowsFeatures, Feature
 from base import GameState, Mark
 from typing import List, NamedTuple, Union, Any
 import numpy as np
+import logging
 
 class CartFeature(NamedTuple):
     feature1: Union[Feature, str]
@@ -19,7 +20,6 @@ class CartNumRowsFeatures(NumRowsFeatures):
                     continue
                 self._cart_feature_names.append(CartFeature(n1, n2))
 
-
     def feature_names(self) -> List[Any]:
         return self._cart_feature_names
 
@@ -28,8 +28,10 @@ class CartNumRowsFeatures(NumRowsFeatures):
         return a + a * a + 1
 
     def get_features(self, state: GameState)  -> List[int]:
+        #logging.info(f'{self.__class__.__name__}.get_features()')
         base_features = super().get_features(state)
         features = base_features.copy()
+        #logging.info(f'base_features: {len(base_features)} {base_features}')
 
         for i, n1 in enumerate(self._feature_names):
             if n1 == 'alone_alone':
@@ -37,7 +39,9 @@ class CartNumRowsFeatures(NumRowsFeatures):
             for j, n2 in enumerate(self._feature_names):
                 if n2 == 'alone_alone':
                     continue
-                np.append(features, base_features[i] * base_features[j])
+
+                val = base_features[i] * base_features[j]
+                features = np.append(features, val)
 
         return features
 

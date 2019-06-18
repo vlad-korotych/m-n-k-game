@@ -1,6 +1,7 @@
 from base import FeaturesModel, Mark, GameState
 import numpy as np
 from typing import List, Tuple, Dict, Union, NamedTuple, Any
+import logging
 
 class Feature(NamedTuple):
     mark: int # my_mark=Mark.X.value, enemy_mark=Mark.O.value
@@ -30,12 +31,14 @@ class NumRowsFeatures(FeaturesModel):
         return self._feature_names
 
     def get_features(self, state: GameState)  -> List[int]:
+        #logging.info(f'{self.__class__.__name__}.get_features()')
         board = state.board
         current_player = state.current_player
         occupied = np.where(board != Mark.NO.value)
         o = [(r, c) for r, c in zip(occupied[0], occupied[1])]
 
-        features = dict((k, 0) for k in self.feature_names())
+        features = dict((k, 0) for k in self._feature_names)
+        #logging.info(len(features))
 
         if len(o) == 1:
             features['alone_count'] = 1
@@ -45,14 +48,14 @@ class NumRowsFeatures(FeaturesModel):
             features['alone_count'] = self.get_alone(o)
             if sum([abs(f) for f in features.values()]) == 0:
                 features['alone_alone'] = self.is_alone(o)
-        #print(rows)
+        #logging.info(len(features))
         return np.array(list(features.values()))
 
     def find_rows(self, board: np.ndarray, occupied: List[Tuple[int, int]], current_player: Mark) -> Dict[Union[Feature, str], int]:
         directions = [(0, 1), (1, 1), (1, 0), (1, -1)]
         h, w = board.shape
 
-        features = dict((k, 0) for k in self.feature_names())
+        features = dict((k, 0) for k in self._feature_names)
 
         v = np.zeros((h, w, len(directions)))
 

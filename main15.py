@@ -16,11 +16,11 @@ if __name__ == "__main__":
     #feat_model = CartNumRowsFeatures(row=5) + 1
     num_feat = feat_model.features_count() + 1
     theta = np.zeros(num_feat)
-    agent1 = QLearningApproximationAgent(0.5, 0.5, EpsilonGreedyPolicy(0.05), theta=theta, features_model=feat_model)
-    agent2 = QLearningApproximationAgent(0.5, 0.5, EpsilonGreedyPolicy(0.05), theta=theta, features_model=feat_model)
+    agent1 = QLearningApproximationAgent(0.5, 0.5, EpsilonGreedyPolicy(0.05), theta=theta, features_model=feat_model, inf_field=False)
+    agent2 = QLearningApproximationAgent(0.5, 0.5, EpsilonGreedyPolicy(0.05), theta=theta, features_model=feat_model, inf_field=False)
     print(len(feat_model.feature_names()))
     print(feat_model.feature_names())
-    g = Game(player1=agent1, player2=agent2, view=ConsoleView(), k=5, play=False, m=None, n=None)
+    g = Game(player1=agent1, player2=agent2, view=ConsoleView(), m=15, n=15, k=5, play=False)
     g.start()
     print(theta)
     
