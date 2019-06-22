@@ -1,12 +1,14 @@
 from base import FeaturesModel, Mark, GameState
 import numpy as np
 from typing import List, Tuple, Dict, Union, NamedTuple, Any
-import logging
+# import logging
+
 
 class Feature(NamedTuple):
-    mark: int # my_mark=Mark.X.value, enemy_mark=Mark.O.value
+    mark: int  # my_mark=Mark.X.value, enemy_mark=Mark.O.value
     row: int
     enemy_behind: bool
+
 
 class NumRowsFeatures(FeaturesModel):
     def __init__(self, row=5):
@@ -15,7 +17,7 @@ class NumRowsFeatures(FeaturesModel):
         for m in [Mark.X.value, Mark.O.value]:
             for b in [False, True]:
                 for i in range(2, self.row + 1):
-                    if i == self.row and b == True:
+                    if i == self.row and b is True:
                         continue
                     self._feature_names.append(Feature(m, i, b))
         self._feature_names.append('alone_count')
@@ -30,28 +32,32 @@ class NumRowsFeatures(FeaturesModel):
     def feature_names(self) -> List[Any]:
         return self._feature_names
 
-    def get_features(self, state: GameState)  -> List[int]:
-        #logging.info(f'{self.__class__.__name__}.get_features()')
+    def get_features(self, state: GameState) -> List[int]:
+        # logging.info(f'{self.__class__.__name__}.get_features()')
         board = state.board
         current_player = state.current_player
         occupied = np.where(board != Mark.NO.value)
         o = [(r, c) for r, c in zip(occupied[0], occupied[1])]
 
         features = dict((k, 0) for k in self._feature_names)
-        #logging.info(len(features))
+        # logging.info(len(features))
 
         if len(o) == 1:
             features['alone_count'] = 1
             features['alone_alone'] = 1
         else:
             features = self.find_rows(board, o, current_player)
-            features['alone_count'] = self.get_alone(o)
+            features['alone_count'] = self.get_alone(o, board)
             if sum([abs(f) for f in features.values()]) == 0:
                 features['alone_alone'] = self.is_alone(o)
-        #logging.info(len(features))
+        # logging.info(len(features))
         return np.array(list(features.values()))
 
-    def find_rows(self, board: np.ndarray, occupied: List[Tuple[int, int]], current_player: Mark) -> Dict[Union[Feature, str], int]:
+    def find_rows(self,
+                  board: np.ndarray,
+                  occupied: List[Tuple[int, int]],
+                  current_player: Mark
+                  ) -> Dict[Union[Feature, str], int]:
         directions = [(0, 1), (1, 1), (1, 0), (1, -1)]
         h, w = board.shape
 
@@ -63,15 +69,15 @@ class NumRowsFeatures(FeaturesModel):
         curr_value = current_player.value
 
         for r, c in occupied:
-            #print(f'r, c, val: {r}, {c}, {b[r, c]}')
+            # print(f'r, c, val: {r}, {c}, {b[r, c]}')
             for d_i, (d_r, d_c) in enumerate(directions):
-                #print(f'direction: {(d_r, d_c, d_i)}')
-                if v[r, c, d_i] == 1: # we already count this cell in this direction
-                    #print('already count')
+                # print(f'direction: {(d_r, d_c, d_i)}')
+                if v[r, c, d_i] == 1:  # we already count this cell in this direction
+                    # print('already count')
                     continue
-                m = board[r, c] # memorize mark
-                #row = []
-                #row.append((r, c))
+                m = board[r, c]  # memorize mark
+                # row = []
+                # row.append((r, c))
                 s = 1
                 cnt = 1
                 enemy_behind = False
@@ -136,6 +142,8 @@ class NumRowsFeatures(FeaturesModel):
                     continue
                 
                 if cnt > 1:
+                    if cnt > self.row:
+                        cnt = self.row
                     if cnt == self.row:
                         enemy_behind = False
                     if m == curr_value:
@@ -146,20 +154,23 @@ class NumRowsFeatures(FeaturesModel):
                         features[Feature(2, cnt, enemy_behind)] += 1
         return features
 
-    def get_alone(self, o: List[Tuple[int, int]]):
+    def get_alone(self, o: List[Tuple[int, int]], board: np.ndarray):
         alone_cnt = 0
-        for p1 in o:
-            np1 = np.array(p1)
-            alone = True
-            for p2 in o:
-                if p1 == p2:
-                    continue
-                np2 = np.array(p2)
-                if np.linalg.norm(np1 - np2) < 2:
-                    alone = False
-                    break
-            if alone:
-                alone_cnt += 1    
+        no_value = Mark.NO.value
+        h, w = board.shape
+        ADJACENTS = {(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)}
+        for r, c in o:
+            found = False
+            for dr, dc in ADJACENTS:
+                nr = r + dr
+                nc = c + dc
+                if 0 <= nr < h and 0 <= nc < w:
+                    board[nr, nc]
+                    if board[nr, nc] != no_value:
+                        found = True
+                        break
+            if not found:
+                alone_cnt += 1
         return alone_cnt
 
     def is_alone(self, o: List[Tuple[int, int]]):

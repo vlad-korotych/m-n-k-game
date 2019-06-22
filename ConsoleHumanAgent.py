@@ -34,3 +34,6 @@ class ConsoleHumanAgent(Agent):
 
     def draw(self, state: GameState):
         pass
+
+    def get_learn_params(self) -> str:
+        return ""

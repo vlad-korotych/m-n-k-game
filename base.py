@@ -5,14 +5,17 @@ from dataclasses import dataclass
 import numpy as np
 from typing import List, Tuple, Any, Optional, Callable, NamedTuple
 
+
 class Mark(Enum):
     NO = 0
     X = 1
     O = 2
 
+
 class Action(NamedTuple):
     row: int
     col: int
+
 
 @dataclass
 class GameState:
@@ -28,6 +31,7 @@ class GameState:
         s += f'board:\n{str(self.board)}'
         return s
 
+
 class View(ABC):
     @abstractmethod
     def __init__(self):
@@ -36,6 +40,7 @@ class View(ABC):
     @abstractmethod
     def update(self, state: GameState) -> None:
         pass
+
 
 class Agent(ABC):
     @abstractmethod
@@ -58,10 +63,16 @@ class Agent(ABC):
     def draw(self, state: GameState) -> None:
         pass
 
+    @abstractmethod
+    def get_learn_params(self) -> str:
+        pass
+
+
 @dataclass
 class Player:
     mark: Mark
     agent: Agent
+
 
 class Policy(ABC):
     @abstractmethod
@@ -71,6 +82,7 @@ class Policy(ABC):
     @abstractmethod
     def get_action(self, state: GameState, actions: Any):
         pass
+
 
 class FeaturesModel(ABC):
     @abstractmethod

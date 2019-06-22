@@ -27,7 +27,7 @@ class CartNumRowsFeatures(NumRowsFeatures):
         a = ((((self.row - 1) * 2) - 1) * 2) + 1
         return a + a * a + 1
 
-    def get_features(self, state: GameState)  -> List[int]:
+    def get_features(self, state: GameState) -> List[int]:
         #logging.info(f'{self.__class__.__name__}.get_features()')
         base_features = super().get_features(state)
         features = base_features.copy()
