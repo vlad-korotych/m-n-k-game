@@ -30,7 +30,7 @@ class QLearningApproximationAgent(Agent):
         self.alfa: float = alfa
         self.gamma: float = gamma
         self.policy: Policy = policy
-        self.features_model = features_model
+        self.features_model: FeaturesModel = features_model
         self.is_learning: bool = learning
         self.row: int = row
         self.history_actions: List[ActionInfo] = []
@@ -52,10 +52,10 @@ class QLearningApproximationAgent(Agent):
         if self.debug:
             logging.info(f'Player: {new_state.current_player.name}')
             logging.info(f'\nPossible actions: {len(actions)}')
+            Q_table = new_state.board.copy().astype(dtype=np.object)
+            Q_table[Q_table == Mark.X.value] = Mark.X.name
+            Q_table[Q_table == Mark.O.value] = Mark.O.name
 
-        Q_table = new_state.board.copy().astype(dtype=np.object)
-        Q_table[Q_table == Mark.X.value] = Mark.X.name
-        Q_table[Q_table == Mark.O.value] = Mark.O.name
         for a in actions:
             if self.debug:
                 logging.info(f'Action: {a.action}')
@@ -70,7 +70,7 @@ class QLearningApproximationAgent(Agent):
             a.new_Q_value = np.dot(self.theta, a.new_features)
             if self.debug:
                 logging.info(f'Q value: {a.new_Q_value}')
-            Q_table[a.action.row, a.action.col] = a.new_Q_value
+                Q_table[a.action.row, a.action.col] = a.new_Q_value
 
         if self.debug:
             logging.info(f'Q table:\n{np.array2string(Q_table, max_line_width=np.inf)}')

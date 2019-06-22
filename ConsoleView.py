@@ -2,6 +2,7 @@ from base import Mark, View, GameState, Action
 import math
 from typing import Callable, Optional
 
+
 class ConsoleView(View):
     def __init__(self) -> None:
         self.turn_callback: Optional[Callable[[Action], None]] = None
@@ -61,7 +62,7 @@ class ConsoleView(View):
     def num_width(self, num) -> int:
         if num == 0:
             return 1
-        return math.ceil(math.log10(num+1))
+        return math.ceil(math.log10(num + 1))
 
     def num_cell(self, num, cell_w) -> str:
         nw = self.num_width(num)
